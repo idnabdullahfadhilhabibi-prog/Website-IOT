@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IDN IoT Dashboard | Smart Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #050505; color: white; scroll-behavior: smooth; overflow-x: hidden; }
+        .purple-glow { box-shadow: 0 0 50px -10px rgba(168, 85, 247, 0.4); }
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .gradient-text { background: linear-gradient(to right, #a855f7, #ec4899); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        .status-dot { height: 8px; width: 8px; border-radius: 50%; display: inline-block; }
+        
+        .pulse-emerald { animation: pulse-emerald 2s infinite; background-color: #10b981; box-shadow: 0 0 10px #10b981; }
+        @keyframes pulse-emerald { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
+        
+        .pulse-blue { animation: pulse-blue 2s infinite; background-color: #3b82f6; box-shadow: 0 0 10px #3b82f6; }
+        @keyframes pulse-blue { 0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); } 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); } }
+
+        input, select { background: rgba(255,255,255,0.05) !important; border: 1px solid rgba(255,255,255,0.1) !important; color: white !important; outline: none; transition: all 0.3s; }
+        input:focus, select:focus { border-color: #a855f7 !important; box-shadow: 0 0 10px rgba(168, 85, 247, 0.2); }
+        
+        /* Custom Scrollbar for Log */
+        #logConsole::-webkit-scrollbar { width: 4px; }
+        #logConsole::-webkit-scrollbar-thumb { background: #a855f7; border-radius: 4px; }
+
+        /* Custom Slider */
+        input[type=range] { -webkit-appearance: none; background: transparent; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; }
+        input[type=range]::-webkit-slider-thumb { height: 16px; width: 16px; border-radius: 50%; background: #a855f7; cursor: pointer; -webkit-appearance: none; margin-top: -5px; box-shadow: 0 0 10px #a855f7; }
+    </style>
+</head>
+<body>
+
+    <section class="h-screen w-full flex flex-col items-center justify-center relative px-10">
+        <div class="max-w-6xl w-full grid md:grid-cols-2 gap-10 items-center z-10">
+            <div>
+                <h1 class="text-7xl font-extrabold mb-4 italic uppercase">Robotics <br> <span class="gradient-text">& IoT Hub.</span></h1>
+                <p class="text-gray-500 text-sm mb-10 tracking-[0.2em] font-bold uppercase">By: Qadli Raissa Dzaky | IDN Boarding School</p>
+                <a href="#dashboard" class="px-10 py-5 bg-purple-600 hover:bg-purple-500 rounded-full font-black text-xs uppercase tracking-[0.2em] transition-all purple-glow inline-block">Open Dashboard</a>
+            </div>
+            <div class="flex justify-center">
+                <div class="w-[350px] h-[350px] rounded-full border border-purple-500/20 p-10 flex items-center justify-center bg-black/40 backdrop-blur-sm purple-glow relative">
+                    <img src="logo.png" class="w-full h-auto object-contain drop-shadow-2xl" alt="Logo IDN">
+                </div>
+            </div>
+        </div>
+        <div class="absolute bottom-10 animate-bounce text-gray-600"><i class="fas fa-chevron-down text-2xl"></i></div>
+    </section>
+
+    <section id="dashboard" class="min-h-screen py-20 px-6 bg-[#030303] border-t border-white/5">
+        <div class="max-w-7xl mx-auto">
+            
+            <header class="mb-12 flex flex-col md:flex-row justify-between items-end gap-6">
+                <div>
+                    <h2 class="text-3xl font-black italic uppercase">Smart <span class="text-purple-500">Nexus</span></h2>
+                    <div class="flex items-center gap-4 mt-3">
+                        <div class="flex items-center gap-2">
+                            <span class="status-dot bg-gray-600" id="dbDot"></span>
+                            <span id="dbText" class="text-[10px] font-black text-gray-500 uppercase tracking-widest">DB: OFF</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="status-dot bg-gray-600" id="bleDot"></span>
+                            <span id="bleText" class="text-[10px] font-black text-gray-500 uppercase tracking-widest">BLE: OFF</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <button id="btnConnectBle" class="px-8 py-4 bg-blue-600 hover:bg-blue-500 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-[0_0_20px_rgba(37,99,235,0.4)]">
+                        <i class="fab fa-bluetooth-b mr-2"></i> Connect Micro:bit
+                    </button>
+                    <button id="btnDisconnectBle" class="hidden px-6 py-4 bg-red-500/20 text-red-400 border border-red-500/50 hover:bg-red-500 hover:text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all">
+                        Disconnect
+                    </button>
+                </div>
+            </header>
+
+            <div class="grid lg:grid-cols-12 gap-8">
+                <div class="lg:col-span-4 space-y-6">
+                    
+                    <div class="glass p-8 rounded-[2.5rem]">
+                        <h3 class="text-[10px] font-black text-gray-500 uppercase mb-5 tracking-widest"><i class="fas fa-cloud mr-2"></i> Database Config</h3>
+                        <div class="space-y-3">
+                            <input type="password" id="apiKey" class="w-full p-4 rounded-xl text-xs" placeholder="API Key (AIzaSy...)">
+                            <input type="text" id="dbUrl" class="w-full p-4 rounded-xl text-xs" placeholder="Database URL (https://...)">
+                            <input type="text" id="nodePath" class="w-full p-4 rounded-xl text-xs" placeholder="Node Path (ex: iot/kelas8)" value="iot/kelas8">
+                            <button id="btnConnectDb" class="w-full py-4 mt-2 bg-purple-600 hover:bg-purple-500 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all purple-glow">Connect Database</button>
+                        </div>
+                    </div>
+
+                    <div class="glass p-8 rounded-[2.5rem] relative">
+                        <div class="flex justify-between items-center mb-5">
+                            <h3 class="text-[10px] font-black text-emerald-400 uppercase tracking-widest"><i class="fas fa-tools mr-2"></i> Widget Builder</h3>
+                            <button id="btnCancelEdit" class="hidden text-[9px] bg-red-500/20 text-red-400 px-3 py-1.5 rounded-lg uppercase font-bold tracking-widest hover:bg-red-500 hover:text-white transition">Batal</button>
+                        </div>
+                        <div class="space-y-3">
+                            <input type="text" id="bKey" class="w-full p-4 rounded-xl text-xs font-mono" placeholder="Nama Key (ex: lampu_teras)">
+                            <select id="bType" class="w-full p-4 rounded-xl text-xs bg-black">
+                                <option value="sensor">📡 Chart Sensor (Analog)</option>
+                                <option value="switch">⚡ Toggle Switch (ON/OFF)</option>
+                                <option value="dimmer">🎚️ Dimmer Slider (Value)</option>
+                            </select>
+                            <div class="grid grid-cols-2 gap-3">
+                                <input type="text" id="bUnit" class="w-full p-4 rounded-xl text-xs" placeholder="Satuan (°C, Lux)">
+                                <input type="number" id="bMax" class="w-full p-4 rounded-xl text-xs" placeholder="Max Val (100)">
+                            </div>
+                            <button id="btnSaveParam" class="w-full py-4 mt-2 bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 rounded-xl font-black text-[10px] uppercase hover:bg-emerald-500 hover:text-black transition tracking-widest">
+                                <i class="fas fa-save mr-2"></i> Simpan Widget
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="glass rounded-[2rem] overflow-hidden flex flex-col">
+                        <div class="bg-white/5 p-4 flex justify-between items-center border-b border-white/5">
+                            <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest"><i class="fas fa-terminal mr-2"></i> System Terminal</h3>
+                            <button id="btnClearLog" class="text-gray-500 hover:text-white transition"><i class="fas fa-trash"></i></button>
+                        </div>
+                        <div id="logConsole" class="p-6 h-48 overflow-y-auto font-mono text-[10px] leading-relaxed text-gray-300"></div>
+                    </div>
+
+                </div>
+
+                <div class="lg:col-span-8 space-y-8">
+                    
+                    <div>
+                        <h3 class="text-xs font-black text-gray-600 uppercase tracking-[0.2em] mb-4 border-b border-white/5 pb-2"><i class="fas fa-chart-area mr-2"></i> Telemetry Sensors</h3>
+                        <div id="sensorGrid" class="grid md:grid-cols-2 gap-6">
+                            <div class="glass p-8 text-center text-xs text-gray-500 rounded-[2rem] col-span-full">Menunggu koneksi database...</div>
+                        </div>
+                    </div>
+
+                    <div class="grid md:grid-cols-2 gap-8">
+                        <div>
+                            <h3 class="text-xs font-black text-gray-600 uppercase tracking-[0.2em] mb-4 border-b border-white/5 pb-2"><i class="fas fa-toggle-on mr-2"></i> Digital Switches</h3>
+                            <div id="switchGrid" class="grid grid-cols-2 gap-4"></div>
+                        </div>
+                        <div>
+                            <h3 class="text-xs font-black text-gray-600 uppercase tracking-[0.2em] mb-4 border-b border-white/5 pb-2"><i class="fas fa-sliders-h mr-2"></i> Analog Dimmers</h3>
+                            <div id="dimmerGrid" class="space-y-4"></div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script type="module">
+        import { initializeApp, getApps, deleteApp } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js';
+        import { getDatabase, ref, onValue, update, remove, set } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js';
+
+        // --- BLE CONSTANTS ---
+        const UART_SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+        const UART_TX_CHARACTERISTIC_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"; // RX Web
+        const UART_RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"; // TX Web
+
+        // --- GLOBAL STATE ---
+        const state = {
+            db: null, currentPath: "", unsubscribe: null, currentData: {}, historyData: {}, charts: {},
+            device: null, txChar: null, rxChar: null, bleConnected: false, bleBuffer: "", editModeKey: null
+        };
+
+        const el = {
+            apiKey: document.getElementById('apiKey'), dbUrl: document.getElementById('dbUrl'), nodePath: document.getElementById('nodePath'),
+            btnConnectDb: document.getElementById('btnConnectDb'), btnConnectBle: document.getElementById('btnConnectBle'), btnDisconnectBle: document.getElementById('btnDisconnectBle'),
+            sensorGrid: document.getElementById('sensorGrid'), switchGrid: document.getElementById('switchGrid'), dimmerGrid: document.getElementById('dimmerGrid'),
+            logConsole: document.getElementById('logConsole'), btnClearLog: document.getElementById('btnClearLog'),
+            bKey: document.getElementById('bKey'), bType: document.getElementById('bType'), bUnit: document.getElementById('bUnit'), bMax: document.getElementById('bMax'),
+            btnSaveParam: document.getElementById('btnSaveParam'), btnCancelEdit: document.getElementById('btnCancelEdit'),
+            dbDot: document.getElementById('dbDot'), dbText: document.getElementById('dbText'), bleDot: document.getElementById('bleDot'), bleText: document.getElementById('bleText')
+        };
+
+        const formatName = (str) => str.replace(/_/g, ' ').toUpperCase();
+
+        // --- TERMINAL LOGGER ---
+        function addLog(msg, type = "info") {
+            const time = new Date().toLocaleTimeString('id-ID', { hour12: false });
+            let color = "text-gray-400";
+            if(type === "success") color = "text-emerald-400";
+            if(type === "error") color = "text-rose-400";
+            if(type === "warn") color = "text-yellow-400";
+            if(type === "rx") color = "text-blue-400";
+            if(type === "tx") color = "text-purple-400";
+            
+            const html = `<div class="mb-1 border-b border-white/5 pb-1"><span class="text-gray-600 mr-2">[${time}]</span> <span class="${color}">${msg}</span></div>`;
+            el.logConsole.insertAdjacentHTML('afterbegin', html);
+        }
+
+        // --- BLUETOOTH LOGIC (KECERDASAN OTOMATIS) ---
+        async function connectBLE() {
+            try {
+                if (!navigator.bluetooth) throw new Error("Browser tidak mendukung Web Bluetooth.");
+                addLog("Scanning Micro:bit...", "warn");
+                
+                state.device = await navigator.bluetooth.requestDevice({
+                    filters: [{ namePrefix: "BBC micro:bit" }],
+                    optionalServices: [UART_SERVICE_UUID]
+                });
+                
+                state.device.addEventListener("gattserverdisconnected", () => {
+                    state.bleConnected = false; updateBleUI(); addLog("Micro:bit Terputus!", "error");
+                });
+
+                const server = await state.device.gatt.connect();
+                const service = await server.getPrimaryService(UART_SERVICE_UUID);
+                
+                state.txChar = await service.getCharacteristic(UART_TX_CHARACTERISTIC_UUID);
+                state.rxChar = await service.getCharacteristic(UART_RX_CHARACTERISTIC_UUID);
+                
+                await state.txChar.startNotifications();
+                state.txChar.addEventListener("characteristicvaluechanged", handleBLEData);
+                
+                state.bleConnected = true; updateBleUI();
+                addLog(`Terhubung ke ${state.device.name}`, "success");
+            } catch (e) { addLog(`BLE Error: ${e.message}`, "error"); }
+        }
+
+        function updateBleUI() {
+            if(state.bleConnected) {
+                el.btnConnectBle.classList.add("hidden");
+                el.btnDisconnectBle.classList.remove("hidden");
+                el.bleDot.className = "status-dot pulse-blue";
+                el.bleText.innerText = "BLE: LIVE";
+                el.bleText.classList.replace("text-gray-500", "text-blue-400");
+            } else {
+                el.btnConnectBle.classList.remove("hidden");
+                el.btnDisconnectBle.classList.add("hidden");
+                el.bleDot.className = "status-dot bg-gray-600";
+                el.bleText.innerText = "BLE: OFF";
+                el.bleText.classList.replace("text-blue-400", "text-gray-500");
+            }
+        }
+
+        function handleBLEData(event) {
+            let arr = [];
+            for (let i = 0; i < event.target.value.byteLength; i++) arr.push(event.target.value.getUint8(i));
+            state.bleBuffer += String.fromCharCode.apply(null, arr);
+            
+            const lines = state.bleBuffer.split('\n');
+            state.bleBuffer = lines.pop(); 
+            
+            lines.forEach(line => {
+                const txt = line.trim();
+                if (txt) processIncomingSensor(txt);
+            });
+        }
+
+        // KECERDASAN OTOMATIS: Mapping data dari Microbit ke Database & UI
+        function processIncomingSensor(txt) {
+            addLog(`RX < ${txt}`, "rx");
+            if (!state.db) return;
+
+            if (txt.includes(':')) {
+                const parts = txt.split(':');
+                let key = parts[0].trim().replace(/\s+/g, '_').toLowerCase();
+                const val = parseFloat(parts[1].trim());
+
+                if (key === "mode") key = "otomatis"; // Samakan kata kunci
+                
+                let autoType = "sensor"; // Default
+                if (key === "lampu" || key === "otomatis") autoType = "switch";
+                if (key === "kipas") autoType = "dimmer";
+
+                if (!isNaN(val)) {
+                    if (state.currentData[key]) {
+                        update(ref(state.db, `${state.currentPath}/${key}`), { value: val });
+                    } else {
+                        addLog(`Auto-Create Widget [${autoType}]: ${key}`, "warn");
+                        set(ref(state.db, `${state.currentPath}/${key}`), { 
+                            tipe: autoType, value: val, satuan: "", batas_atas: autoType==="dimmer"?1024:100 
+                        });
+                    }
+                }
+            }
+        }
+
+        async function sendToMicrobit(key, val) {
+            if (!state.rxChar) { addLog("TX Gagal: BLE tidak terhubung", "error"); return; }
+            const payload = `${key},${val}\n`;
+            try {
+                await state.rxChar.writeValue(new TextEncoder().encode(payload));
+                addLog(`TX > ${payload.trim()}`, "tx");
+            } catch(e) { addLog(`TX Error: ${e.message}`, "error"); }
+        }
+
+        // --- FIREBASE LOGIC ---
+        async function connectFirebase() {
+            const apiKey = el.apiKey.value.trim();
+            const dbUrl = el.dbUrl.value.trim();
+            const path = el.nodePath.value.trim();
+
+            if(!apiKey || !dbUrl || !path) { alert("Lengkapi config Firebase!"); return; }
+            
+            try {
+                const config = { apiKey, databaseURL: dbUrl, projectId: dbUrl.split('//')[1]?.split('.')[0] };
+                if (getApps().length > 0) await deleteApp(getApps()[0]);
+                if (state.unsubscribe) state.unsubscribe();
+
+                const app = initializeApp(config);
+                state.db = getDatabase(app);
+                state.currentPath = path;
+
+                addLog(`Syncing to DB: /${path}`, "success");
+                
+                state.unsubscribe = onValue(ref(state.db, path), (snapshot) => {
+                    state.currentData = snapshot.val() || {};
+                    renderDashboard(state.currentData);
+                    
+                    el.dbDot.className = "status-dot pulse-emerald";
+                    el.dbText.innerText = "DB: LIVE";
+                    el.dbText.classList.replace("text-gray-500", "text-emerald-400");
+                });
+
+                localStorage.setItem('idn_smart_cfg', JSON.stringify({apiKey, dbUrl, path}));
+            } catch(e) { addLog(`DB Error: ${e.message}`, "error"); }
+        }
+
+        // --- RENDER DASHBOARD UI ---
+        function renderDashboard(data) {
+            const keys = Object.keys(data);
+            if(keys.length === 0) {
+                el.sensorGrid.innerHTML = `<div class="glass p-8 text-center text-xs text-gray-500 rounded-[2rem] col-span-full">Database Kosong. Tambah via Builder atau kirim data dari Micro:bit.</div>`;
+                el.switchGrid.innerHTML = ''; el.dimmerGrid.innerHTML = '';
+                return;
+            }
+
+            const sensors = keys.filter(k => data[k].tipe === 'sensor');
+            const switches = keys.filter(k => data[k].tipe === 'switch');
+            const dimmers = keys.filter(k => data[k].tipe === 'dimmer');
+
+            renderSensors(sensors, data);
+            renderSwitches(switches, data);
+            renderDimmers(dimmers, data);
+        }
+
+        function getWidgetActionsHTML(key) {
+            return `
+                <div class="absolute top-4 right-5 flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                    <button class="text-blue-400 hover:text-blue-300 transition" onclick="window.editWidget('${key}')"><i class="fas fa-edit"></i></button>
+                    <button class="text-rose-500 hover:text-rose-400 transition" onclick="window.deleteWidget('${key}')"><i class="fas fa-trash"></i></button>
+                </div>
+            `;
+        }
+
+        function renderSensors(keys, data) {
+            const grid = el.sensorGrid;
+            Array.from(grid.children).forEach(e => { if(e.id && !keys.includes(e.id.replace('s-',''))) { e.remove(); if(state.charts[e.id.replace('s-','')]) state.charts[e.id.replace('s-','')].destroy(); } });
+            if(keys.length > 0 && grid.innerHTML.includes("Database Kosong")) grid.innerHTML = '';
+
+            keys.forEach(key => {
+                const item = data[key];
+                let card = document.getElementById(`s-${key}`);
+                
+                if(!state.historyData[key]) state.historyData[key] = [];
+                state.historyData[key].push(item.value);
+                if(state.historyData[key].length > 15) state.historyData[key].shift();
+
+                if (!card) {
+                    const html = `
+                        <div class="glass p-6 rounded-[2rem] purple-glow relative group" id="s-${key}">
+                            ${getWidgetActionsHTML(key)}
+                            <h3 class="text-[10px] font-black text-purple-400 mb-4 uppercase tracking-widest">${formatName(key)}</h3>
+                            <div class="flex items-baseline gap-2 mb-4">
+                                <h3 class="text-4xl font-black italic" id="s-val-${key}">${item.value}</h3>
+                                <span class="text-xs text-gray-400 font-bold">${item.satuan || ''}</span>
+                            </div>
+                            <div class="h-20 w-full"><canvas id="canvas-${key}"></canvas></div>
+                        </div>
+                    `;
+                    grid.insertAdjacentHTML('beforeend', html);
+                    initChart(key, state.historyData[key], item.batas_atas || 100);
+                } else {
+                    document.getElementById(`s-val-${key}`).innerText = item.value;
+                    updateChart(key, state.historyData[key]);
+                }
+            });
+        }
+
+        function renderSwitches(keys, data) {
+            el.switchGrid.innerHTML = keys.length === 0 ? '<div class="col-span-full text-[10px] text-gray-600">No Switches.</div>' : '';
+            keys.forEach(key => {
+                const item = data[key];
+                const isOn = (item.value == 1 || item.value === true);
+                const bg = isOn ? 'bg-purple-600 border-purple-400 purple-glow text-white' : 'glass border-white/5 text-gray-500 hover:text-white';
+                
+                const html = `
+                    <div class="p-6 rounded-[2rem] border transition-all flex flex-col items-center gap-3 cursor-pointer relative group ${bg}" id="sw-${key}" onclick="window.toggleSwitch('${key}', ${isOn ? 0 : 1})">
+                        ${getWidgetActionsHTML(key)}
+                        <i class="fas fa-power-off text-2xl mt-2"></i>
+                        <span class="text-[9px] font-black uppercase tracking-widest mt-1">${formatName(key)}</span>
+                        <span class="text-sm font-bold">${isOn ? 'ON' : 'OFF'}</span>
+                    </div>
+                `;
+                el.switchGrid.insertAdjacentHTML('beforeend', html);
+            });
+        }
+
+        function renderDimmers(keys, data) {
+            el.dimmerGrid.innerHTML = keys.length === 0 ? '<div class="col-span-full text-[10px] text-gray-600">No Dimmers.</div>' : '';
+            keys.forEach(key => {
+                const item = data[key];
+                const max = item.batas_atas || 1024;
+                
+                const html = `
+                    <div class="glass p-6 rounded-[2rem] relative group">
+                        ${getWidgetActionsHTML(key)}
+                        <div class="flex justify-between items-center mb-4 pr-12">
+                            <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">${formatName(key)}</span>
+                            <span class="text-sm text-purple-400 font-bold">${item.value} <span class="text-[10px] text-gray-600">/ ${max}</span></span>
+                        </div>
+                        <input type="range" class="w-full" min="0" max="${max}" value="${item.value}" onchange="window.changeDimmer('${key}', this.value)">
+                    </div>
+                `;
+                el.dimmerGrid.insertAdjacentHTML('beforeend', html);
+            });
+        }
+
+        // --- CHART.JS LOGIC ---
+        function initChart(key, historyArr, maxConfig) {
+            const ctx = document.getElementById(`canvas-${key}`).getContext('2d');
+            const gradient = ctx.createLinearGradient(0, 0, 0, 80);
+            gradient.addColorStop(0, 'rgba(168, 85, 247, 0.4)');
+            gradient.addColorStop(1, 'rgba(168, 85, 247, 0)');
+
+            state.charts[key] = new Chart(ctx, { 
+                type: 'line', 
+                data: { 
+                    labels: Array(15).fill(''), 
+                    datasets: [{ 
+                        data: [...historyArr], borderColor: '#a855f7', borderWidth: 2, pointRadius: 0, 
+                        fill: true, backgroundColor: gradient, tension: 0.4 
+                    }] 
+                }, 
+                options: { 
+                    responsive: true, maintainAspectRatio: false, 
+                    animation: { duration: 0 },
+                    plugins: { legend: { display: false } }, 
+                    scales: { 
+                        x: { display: false }, 
+                        y: { display: false, min: 0, suggestedMax: maxConfig } 
+                    } 
+                } 
+            });
+        }
+
+        function updateChart(key, historyArr) {
+            if(state.charts[key]) {
+                state.charts[key].data.datasets[0].data = [...historyArr];
+                state.charts[key].update();
+            }
+        }
+
+        // --- GLOBAL WINDOW ACTIONS (Untuk HTML onclick) ---
+        window.toggleSwitch = async (key, newVal) => {
+            if(!state.db) return;
+            await update(ref(state.db, `${state.currentPath}/${key}`), { value: newVal });
+            sendToMicrobit(key, newVal);
+        };
+
+        window.changeDimmer = async (key, newVal) => {
+            if(!state.db) return;
+            const val = parseInt(newVal);
+            await update(ref(state.db, `${state.currentPath}/${key}`), { value: val });
+            sendToMicrobit(key, val);
+        };
+
+        window.deleteWidget = async (key) => {
+            event.stopPropagation();
+            if(confirm(`Hapus widget [${formatName(key)}] secara permanen?`)) {
+                await remove(ref(state.db, `${state.currentPath}/${key}`));
+                if(state.historyData[key]) delete state.historyData[key];
+                addLog(`Widget dihapus: ${key}`, "error");
+            }
+        };
+
+        window.editWidget = (key) => {
+            event.stopPropagation();
+            const item = state.currentData[key];
+            if(!item) return;
+            
+            el.bKey.value = key; el.bKey.readOnly = true; el.bKey.classList.replace("border-white/10", "border-purple-500");
+            el.bType.value = item.tipe || 'sensor';
+            el.bUnit.value = item.satuan || '';
+            el.bMax.value = item.batas_atas || '';
+            
+            state.editModeKey = key;
+            el.btnCancelEdit.classList.remove('hidden');
+            el.btnSaveParam.innerHTML = '<i class="fas fa-check mr-2"></i> Update Widget';
+        };
+
+        function resetBuilder() {
+            el.bKey.value = ''; el.bKey.readOnly = false; el.bKey.classList.replace("border-purple-500", "border-white/10");
+            el.bUnit.value = ''; el.bMax.value = '';
+            state.editModeKey = null;
+            el.btnCancelEdit.classList.add('hidden');
+            el.btnSaveParam.innerHTML = '<i class="fas fa-save mr-2"></i> Simpan Widget';
+        }
+
+        // --- EVENT LISTENERS ---
+        el.btnCancelEdit.onclick = resetBuilder;
+        el.btnClearLog.onclick = () => el.logConsole.innerHTML = '';
+        el.btnConnectBle.onclick = connectBLE;
+        el.btnDisconnectBle.onclick = () => { if(state.device) state.device.gatt.disconnect(); };
+        el.btnConnectDb.onclick = connectFirebase;
+
+        el.btnSaveParam.onclick = async () => {
+            if(!state.db) { alert("Connect Database terlebih dahulu!"); return; }
+            let key = el.bKey.value.trim().replace(/\s+/g, '_').toLowerCase();
+            if(!key) return;
+
+            const payload = {
+                tipe: el.bType.value,
+                satuan: el.bUnit.value.trim(),
+                batas_atas: parseInt(el.bMax.value) || (el.bType.value === 'dimmer'? 1024 : 100),
+                value: state.editModeKey ? state.currentData[state.editModeKey].value : 0
+            };
+
+            try {
+                await set(ref(state.db, `${state.currentPath}/${key}`), payload);
+                addLog(`Widget Disimpan: ${key}`, "success");
+                resetBuilder();
+            } catch(e) { addLog(`Save Error: ${e.message}`, "error"); }
+        };
+
+        // --- INIT ---
+        window.onload = () => {
+            const saved = JSON.parse(localStorage.getItem('idn_smart_cfg') || '{}');
+            if(saved.apiKey) {
+                el.apiKey.value = saved.apiKey;
+                el.dbUrl.value = saved.dbUrl;
+                el.nodePath.value = saved.path || 'iot/kelas8';
+            }
+            addLog("Sistem Siap. Menunggu instruksi...", "warn");
+        };
+
+    </script>
+</body>
+</html>
